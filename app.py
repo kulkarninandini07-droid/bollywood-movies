@@ -40,7 +40,6 @@ movie_posters = {
     "3 Idiots": "https://upload.wikimedia.org/wikipedia/en/d/df/3_idiots_poster.jpg",
     "Lagaan": "https://upload.wikimedia.org/wikipedia/en/d/db/Lagaan_movie_poster.jpg",
     "PK": "https://upload.wikimedia.org/wikipedia/en/9/9d/PK_Poster.jpg",
-    "Taare Jameen Par": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRoIFyKAL4ldG54LGrepUXMraXASXkEmk4b79Uv_tPy35dtC1fmCTz3VBAfC9wR-ZugQjiB"
     "Dangal": "https://upload.wikimedia.org/wikipedia/en/9/9d/Dangal_Poster.jpg",
     "Bajrangi Bhaijaan": "https://upload.wikimedia.org/wikipedia/en/6/60/Bajrangi_Bhaijaan_Poster.jpg",
     "Sultan": "https://upload.wikimedia.org/wikipedia/en/f/f4/Sultan_Poster.jpg",
@@ -103,4 +102,5 @@ if st.button("Recommend"):
                 st.write(movie)
     else:
         st.warning("No similar movies found.")
+
 
