@@ -1,69 +1,44 @@
+# app.py
 import streamlit as st
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 from difflib import get_close_matches
+import requests
 
-# ----------------------------
-# Load Dataset
-# ----------------------------
+# --- TMDB API function to fetch poster ---
+def get_poster(movie_name):
+    api_key = "febc261adb0704290fbf6328907726cb"  # Replace with your TMDB API key
+    url = f"https://api.themoviedb.org/3/search/movie?api_key={api_key}&query={movie_name}"
+    data = requests.get(url).json()
+    if data['results']:
+        poster_path = data['results'][0]['poster_path']
+        if poster_path:
+            return f"https://image.tmdb.org/t/p/w500{poster_path}"
+    return "https://via.placeholder.com/150x220?text=No+Image"
+
+# --- Load data ---
 @st.cache_data
 def load_data():
-    return pd.read_csv("bollywood_movies.csv")  # make sure your CSV is in the repo
+    df = pd.read_csv("Data for repository.csv")  # Update with your CSV filename
+    # Fill missing values
+    for col in ['Genre', 'Lead Star', 'Director']:
+        if col in df.columns:
+            df[col] = df[col].fillna('')
+    # Combine features
+    df['content'] = df.apply(lambda row: (row['Genre'] + " ") + (row['Director'] + " ") * 2 + (row['Lead Star'] + " ") * 3, axis=1)
+    return df
 
 movies = load_data()
 
-# Fill missing values
-for col in ['Genre', 'Lead Star', 'Director']:
-    if col in movies.columns:
-        movies[col] = movies[col].fillna('')
-
-# ----------------------------
-# Feature Engineering
-# ----------------------------
-def combine_features(row):
-    return (row['Genre'] + " ") * 1 + (row['Director'] + " ") * 2 + (row['Lead Star'] + " ") * 3
-
-movies['content'] = movies.apply(combine_features, axis=1)
-
-# ----------------------------
-# TF-IDF + Similarity
-# ----------------------------
-tfidf = TfidfVectorizer(stop_words='english')
-tfidf_matrix = tfidf.fit_transform(movies['content'])
+# --- Create indices for fast lookup ---
 indices = pd.Series(movies.index, index=movies['Movie Name']).drop_duplicates()
 
-# ----------------------------
-# Movie posters (static demo)
-# ----------------------------
-movie_posters = {
-    "3 Idiots": "https://upload.wikimedia.org/wikipedia/en/d/df/3_idiots_poster.jpg",
-    "Lagaan": "https://upload.wikimedia.org/wikipedia/en/d/db/Lagaan_movie_poster.jpg",
-    "PK": "https://upload.wikimedia.org/wikipedia/en/9/9d/PK_Poster.jpg",
-    "Dangal": "https://upload.wikimedia.org/wikipedia/en/9/9d/Dangal_Poster.jpg",
-    "Bajrangi Bhaijaan": "https://upload.wikimedia.org/wikipedia/en/6/60/Bajrangi_Bhaijaan_Poster.jpg",
-    "Sultan": "https://upload.wikimedia.org/wikipedia/en/f/f4/Sultan_Poster.jpg",
-    "Padmaavat": "https://upload.wikimedia.org/wikipedia/en/3/3b/Padmaavat_poster.jpg",
-    "Andhadhun": "https://upload.wikimedia.org/wikipedia/en/3/3f/Andhadhun_poster.jpg",
-    "Bahubali 2": "https://upload.wikimedia.org/wikipedia/en/7/7e/Baahubali_The_Conclusion.jpg",
-    "Tanhaji": "https://upload.wikimedia.org/wikipedia/en/0/0f/Tanhaji_poster.jpg",
-    "Chhichhore": "https://upload.wikimedia.org/wikipedia/en/3/33/Chhichhore_poster.jpg",
-    "Queen": "https://upload.wikimedia.org/wikipedia/en/0/0c/Queen_2013_film_poster.jpg",
-    "Barfi": "https://upload.wikimedia.org/wikipedia/en/1/15/Barfi%21_poster.jpg",
-    "Raazi": "https://upload.wikimedia.org/wikipedia/en/3/3f/Raazi_film_poster.jpg",
-    "Secret Superstar": "https://upload.wikimedia.org/wikipedia/en/7/79/Secret_Superstar_poster.jpg",
-    "Gully Boy": "https://upload.wikimedia.org/wikipedia/en/3/33/Gully_Boy_film_poster.jpg",
-    "Zindagi Na Milegi Dobara": "https://upload.wikimedia.org/wikipedia/en/c/c0/Zindagi_Na_Milegi_Dobara.jpg",
-    "Yeh Jawaani Hai Deewani": "https://upload.wikimedia.org/wikipedia/en/4/45/Yeh_Jawaani_Hai_Deewani.jpg",
-    "Kabir Singh": "https://upload.wikimedia.org/wikipedia/en/f/f9/Kabir_Singh_film_poster.jpg",
-    "Jodhaa Akbar": "https://upload.wikimedia.org/wikipedia/en/0/01/Jodhaa_Akbar_film.jpg",
-}
+# --- TF-IDF vectorization ---
+tfidf = TfidfVectorizer(stop_words='english')
+tfidf_matrix = tfidf.fit_transform(movies['content'])
 
-    # add more movies here with URLs
-
-# ----------------------------
-# Recommendation Function
-# ----------------------------
+# --- Recommendation function ---
 def recommend_movies(title, num_recommendations=10):
     title = title.strip()
     if title not in indices:
@@ -79,9 +54,7 @@ def recommend_movies(title, num_recommendations=10):
     movie_indices = [i[0] for i in sim_scores]
     return movies['Movie Name'].iloc[movie_indices]
 
-# ----------------------------
-# Streamlit UI
-# ----------------------------
+# --- Streamlit UI ---
 st.markdown("<h1 style='text-align: center; color: #FF4B4B;'>🎬 Bollywood Movie Recommender</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
@@ -96,11 +69,12 @@ if st.button("Recommend"):
         for i, movie in enumerate(recs):
             col = cols[i % 2]
             with col:
-                poster_url = movie_posters.get(movie, "")
-                if poster_url:
-                    st.image(poster_url, width=150)
+                poster_url = get_poster(movie)
+                st.image(poster_url, width=150)
                 st.write(movie)
     else:
         st.warning("No similar movies found.")
+
+
 
 
