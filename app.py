@@ -36,7 +36,7 @@ def recommend(movie_name, top_n=10):
         return None, "Movie not found in dataset."
     
     movie = matches.iloc[0]
-    lead_star = movie.get('Lead Star', '')
+    lead_actor = str(movie_row['Lead Star'])
     genres = movie.get('Genres', '')
 
     # filter by same lead star
@@ -89,4 +89,5 @@ if st.button("Recommend"):
                         st.caption(row['Overview'])
     else:
         st.info("Please enter a movie name.")
+
 
