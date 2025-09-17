@@ -42,9 +42,10 @@ def recommend(movie_name, top_n=10):
     # filter by same lead star
     same_star = movies[movies['Lead Star'] == lead_star] if lead_star else pd.DataFrame()
 
-    # filter by same genre (if genres stored as list, handle that)
-    if isinstance(genres, str):
-        same_genre = movies[movies['Genres'].astype(str).str.contains(genres.split(",")[0], na=False)]
+    # filter by same genre (safe contains)
+    if isinstance(genres, str) and genres.strip():
+        first_genre = genres.split(",")[0].strip()
+        same_genre = movies[movies['Genres'].astype(str).str.contains(first_genre, case=False, na=False, regex=False)]
     else:
         same_genre = pd.DataFrame()
 
@@ -58,6 +59,7 @@ def recommend(movie_name, top_n=10):
         return None, "No similar movies found for this lead actor or genre."
 
     return recommendations.head(top_n), None
+
 
 
 # --- Streamlit UI ---
@@ -87,3 +89,4 @@ if st.button("Recommend"):
                         st.caption(row['Overview'])
     else:
         st.info("Please enter a movie name.")
+
