@@ -4,13 +4,14 @@ import pandas as pd
 
 # --- Load dataset ---
 @st.cache_data
+# --- Load dataset ---
+@st.cache_data
 def load_data():
     df = pd.read_csv("bollywood_movies_full.csv")  # Your CSV
     # Fill missing values
     df['Lead Star'] = df['Lead Star'].fillna('')
     df['Genre'] = df['Genre'].fillna('')
-    df['Region'] = df['Region'].fillna('IN')  # Ensure Bollywood
-    return df[df['Region'] == 'IN']  # Only Bollywood
+    return df  # No need for Region filter
 
 movies = load_data()
 
@@ -57,3 +58,4 @@ if st.button("Recommend"):
                 st.markdown(f"🎭 Genre: {row['Genre']}")
     else:
         st.info("No similar movies found for this lead actor and genre.")
+
