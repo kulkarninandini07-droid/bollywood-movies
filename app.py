@@ -1,61 +1,89 @@
-# app.py
 import streamlit as st
 import pandas as pd
+from difflib import get_close_matches
 
-# --- Load dataset ---
-@st.cache_data
 # --- Load dataset ---
 @st.cache_data
 def load_data():
-    df = pd.read_csv("bollywood_movies_full.csv")  # Your CSV
+    df = pd.read_csv("bollywood_movies.csv")
     # Fill missing values
-    df['Lead Star'] = df['Lead Star'].fillna('')
-    df['Genre'] = df['Genre'].fillna('')
-    return df  # No need for Region filter
+    if 'Lead Star' not in df.columns:
+        df['Lead Star'] = ''   # fallback if dataset has no lead star
+    if 'Genres' not in df.columns:
+        df['Genres'] = ''      # fallback if dataset has no genres
+    if 'Overview' not in df.columns:
+        df['Overview'] = ''    # fallback if dataset has no overview
+    return df
 
 movies = load_data()
 
+# --- Find closest movie match ---
+def find_movie(title, movies):
+    all_titles = movies['Movie Name'].astype(str).str.lower().tolist()
+    matches = get_close_matches(title.lower(), all_titles, n=1, cutoff=0.6)
+    if matches:
+        return matches[0]  # best fuzzy match
+    return None
+
 # --- Recommendation function ---
-def recommend_movies(movie_name, num_recommendations=10):
-    movie_name = movie_name.strip()
-    if movie_name not in movies['Movie Name'].values:
-        st.warning("Movie not found! Check spelling or try another movie.")
-        return pd.DataFrame()
+def recommend(movie_name, top_n=10):
+    movie_key = find_movie(movie_name, movies)
+    if not movie_key:
+        return None, "Movie not found! Check spelling or try another."
+
+    matches = movies[movies['Movie Name'].str.lower() == movie_key]
+    if matches.empty:
+        return None, "Movie not found in dataset."
     
-    # Get selected movie info
-    selected_movie = movies[movies['Movie Name'] == movie_name].iloc[0]
-    lead_star = selected_movie['Lead Star']
-    genre = selected_movie['Genre'].split(',')[0]  # pick main genre
-    
-    # Filter movies with same lead actor and similar genre
-    recs = movies[
-        (movies['Lead Star'] == lead_star) & 
-        (movies['Genre'].str.contains(genre)) & 
-        (movies['Movie Name'] != movie_name)  # exclude the selected movie
-    ]
-    
-    return recs.head(num_recommendations)
+    movie = matches.iloc[0]
+    lead_star = movie.get('Lead Star', '')
+    genres = movie.get('Genres', '')
+
+    # filter by same lead star
+    same_star = movies[movies['Lead Star'] == lead_star] if lead_star else pd.DataFrame()
+
+    # filter by same genre (if genres stored as list, handle that)
+    if isinstance(genres, str):
+        same_genre = movies[movies['Genres'].astype(str).str.contains(genres.split(",")[0], na=False)]
+    else:
+        same_genre = pd.DataFrame()
+
+    # combine
+    recommendations = pd.concat([same_star, same_genre]).drop_duplicates()
+
+    # remove input movie itself
+    recommendations = recommendations[movies['Movie Name'].str.lower() != movie_key]
+
+    if recommendations.empty:
+        return None, "No similar movies found for this lead actor or genre."
+
+    return recommendations.head(top_n), None
+
 
 # --- Streamlit UI ---
-st.markdown("<h1 style='text-align: center; color: #FF4B4B;'>🎬 Bollywood Movie Recommender</h1>", unsafe_allow_html=True)
-st.markdown("---")
+st.set_page_config(page_title="Bollywood Recommender", layout="wide")
+
+st.title("🎬 Bollywood Movie Recommender")
+st.write("Get recommendations based on **Lead Star** and **Genre**")
 
 movie_input = st.text_input("Enter a Bollywood movie name:")
-num_rec = st.slider("Number of recommendations:", 5, 15, 10)
 
 if st.button("Recommend"):
-    recommendations = recommend_movies(movie_input, num_rec)
-    if not recommendations.empty:
-        st.subheader(f"Movies starring the same lead actor as '{movie_input}':")
-        cols = st.columns(3)
-        for i, (_, row) in enumerate(recommendations.iterrows()):
-            col = cols[i % 3]
-            with col:
-                poster = row['Poster URL'] if row['Poster URL'] else "https://via.placeholder.com/150x220?text=No+Image"
-                st.image(poster, width=150)
-                st.markdown(f"**{row['Movie Name']}**")
-                st.markdown(f"⭐ Rating: {row['Rating']} | 📅 Year: {row['Release Year']}")
-                st.markdown(f"🎭 Genre: {row['Genre']}")
+    if movie_input:
+        results, error = recommend(movie_input)
+        if error:
+            st.warning(error)
+        else:
+            st.success(f"Recommendations for **{movie_input.title()}**:")
+            cols = st.columns(2)  # two-column layout
+            for i, (_, row) in enumerate(results.iterrows()):
+                with cols[i % 2]:
+                    st.subheader(row['Movie Name'])
+                    if 'Poster URL' in row and pd.notna(row['Poster URL']):
+                        st.image(row['Poster URL'], width=200)
+                    st.write(f"⭐ Lead Star: {row['Lead Star']}")
+                    st.write(f"🎭 Genre: {row['Genres']}")
+                    if 'Overview' in row and isinstance(row['Overview'], str):
+                        st.caption(row['Overview'])
     else:
-        st.info("No similar movies found for this lead actor and genre.")
-
+        st.info("Please enter a movie name.")
