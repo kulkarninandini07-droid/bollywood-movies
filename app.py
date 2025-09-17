@@ -36,7 +36,7 @@ def recommend(movie_name, top_n=10):
         return None, "Movie not found in dataset."
     
     movie = matches.iloc[0]
-    lead_actor = str(movie_row['Lead Star'])
+    lead_star = movie.get('Lead Star', '')
     genres = movie.get('Genres', '')
 
     # filter by same lead star
@@ -59,8 +59,6 @@ def recommend(movie_name, top_n=10):
         return None, "No similar movies found for this lead actor or genre."
 
     return recommendations.head(top_n), None
-
-
 
 # --- Streamlit UI ---
 st.set_page_config(page_title="Bollywood Recommender", layout="wide")
@@ -89,5 +87,6 @@ if st.button("Recommend"):
                         st.caption(row['Overview'])
     else:
         st.info("Please enter a movie name.")
+
 
 
