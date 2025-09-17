@@ -61,7 +61,6 @@ movie_posters = {
 }
 
     # add more movies here with URLs
-}
 
 # ----------------------------
 # Recommendation Function
@@ -104,3 +103,4 @@ if st.button("Recommend"):
                 st.write(movie)
     else:
         st.warning("No similar movies found.")
+
